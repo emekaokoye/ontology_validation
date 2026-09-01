@@ -1,6 +1,7 @@
 import sys
 from rdflib import Graph
 from pyshacl import validate
+import pylode
 
 def run_pipeline():
     print("=== Loading Ontology Data ===")
@@ -68,6 +69,24 @@ def run_pipeline():
     else:
         print("\n🚀 Pipeline Finished Cleanly!")
         sys.exit(0) # Standard exit code signaling absolute build green
+
+    print("\n=== Phase 4: Automated Documentation Generation via pyLODE ===")
+    try:
+        # Create output distribution directory for GitHub Pages host compilation
+        os.makedirs("public", exist_ok=True)
+        
+        # Invoke pyLODE template compiler engine on the base Turtle file
+        html_doc = pylode.PylodeHtml(ontology="healthcare_ontology.ttl")
+        html_doc.render(destination="public/index.html")
+        
+        print("✅ Success: Human-readable documentation successfully written to public/index.html")
+        print("\n🚀 Pipeline Finished Cleanly across all Validation and Publishing Targets!")
+        sys.exit(0)
+        
+    except Exception as e:
+        print(f"❌ Documentation Error: Failed to auto-generate HTML templates: {e}")
+        sys.exit(5) # Set explicit exit fallback error code target
+        
 
 if __name__ == '__main__':
     run_pipeline()

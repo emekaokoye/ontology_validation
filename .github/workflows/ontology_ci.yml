@@ -22,8 +22,8 @@ jobs:
     - name: Install Semantic Verification Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install rdflib pyshacl
+        pip install rdflib pyshacl pylode owlready2 # 👈 Added pylode dependency package here
 
-    - name: Execute SHACL and SPARQL Test Framework
+    - name: Execute Reasoner, SHACL, SPARQL, and pyLODE Framework
       run: |
         python validate_ontology.py
