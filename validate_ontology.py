@@ -41,8 +41,12 @@ def run_pipeline():
     print("Patients matching CQ (Systolic > 130):")
     passed_patients = []
     for row in qres:
-        patient_name = row.patient.split("#")[-1]
-        print(f" - {patient_name} (Systolic: {row.systolicValue})")
+        # old way
+        # patient_name = row.patient.split("#")[-1]
+        
+        # This splits on both '#' or '/' and handles raw strings or URIRef objects safely
+        patient_name = row.patient.replace('#', '/').split('/')[-1]        print(f" - {patient_name} (Systolic: {row.systolicValue})")
+        
         passed_patients.append(patient_name)
         
     # Assertions for Unit Test outcome tracking
