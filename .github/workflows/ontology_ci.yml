@@ -12,10 +12,10 @@ jobs:
 
     steps:
     - name: Checkout Code Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5 # 👈 Upgraded for Node 24 compliance
 
     - name: Set up Python Environment
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6 # 👈 Upgraded for Node 24 compliance
       with:
         python-version: '3.11'
 
