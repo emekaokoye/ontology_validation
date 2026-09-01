@@ -2,6 +2,7 @@ import sys
 from rdflib import Graph
 from pyshacl import validate
 import pylode
+import os
 
 def run_pipeline():
     print("=== Loading Ontology Data ===")

@@ -22,7 +22,14 @@ jobs:
     - name: Install Semantic Verification Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install rdflib pyshacl pylode owlready2 # 👈 Added pylode dependency package here
+        pip install rdflib pyshacl pylode==2.8.11 owlready2 # 👈 Added pylode dependency package here
+
+    # ✅ NEW STEP: Fixes the pyLODE v3.4.1 site-packages bug
+    - name: Patch pyLODE Environment Workspace File Bug
+      run: |
+        SITE_PACKAGES_DIR=$(python -c "import site; print(site.getsitepackages()[0])")
+        touch "$SITE_PACKAGES_DIR/pyproject.toml"
+
 
     - name: Execute Reasoner, SHACL, SPARQL, and pyLODE Framework
       run: |
