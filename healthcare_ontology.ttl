@@ -1,0 +1,93 @@
+@prefix ex: <http://example.org> .
+@prefix owl: <http://w3.org> .
+@prefix rdf: <http://w3.org> .
+@prefix rdfs: <http://w3.org> .
+@prefix sh: <http://w3.org> .
+@prefix xsd: <http://w3.org> .
+
+<http://example.org> rdf:type owl:Ontology .
+
+# ==========================================
+# 1. ONTOLOGY BLUEPRINT (TBox / Schema)
+# ==========================================
+
+ex:Patient rdf:type owl:Class .
+ex:BloodPressureMeasurement rdf:type owl:Class .
+
+ex:hasMeasurement rdf:type owl:ObjectProperty ;
+    rdfs:domain ex:Patient ;
+    rdfs:range ex:BloodPressureMeasurement .
+
+ex:systolic rdf:type owl:DatatypeProperty ;
+    rdfs:domain ex:BloodPressureMeasurement ;
+    rdfs:range xsd:integer .
+
+ex:diastolic rdf:type owl:DatatypeProperty ;
+    rdfs:domain ex:BloodPressureMeasurement ;
+    rdfs:range xsd:integer .
+
+# --- INTENTIONAL LOGICAL ERROR FOR UNIT TESTING ---
+# A measurement class that cannot be instantiated logically because it 
+# states a single datatype property must be 120 AND 140 at the same time.
+ex:BrokenMeasurement rdf:type owl:Class ;
+    rdfs:subClassOf ex:BloodPressureMeasurement ;
+    owl:equivalentClass [
+        rdf:type owl:Class ;
+        owl:intersectionOf (
+            [ rdf:type owl:Restriction ; owl:onProperty ex:systolic ; owl:hasValue 120 ]
+            [ rdf:type owl:Restriction ; owl:onProperty ex:systolic ; owl:hasValue 140 ]
+        )
+    ] .
+
+
+# ==========================================
+# 2. VALIDATION CONSTRAINTS (SHACL Shapes)
+# ==========================================
+
+ex:PatientShape rdf:type sh:NodeShape ;
+    sh:targetClass ex:Patient ;
+    sh:property [
+        sh:path ex:hasMeasurement ;
+        sh:minCount 1 ;
+        sh:message "Validation Error: Patient must have at least one blood pressure record linked." ;
+    ] .
+
+ex:BloodPressureMeasurementShape rdf:type sh:NodeShape ;
+    sh:targetClass ex:BloodPressureMeasurement ;
+    sh:property [
+        sh:path ex:systolic ;
+        sh:minCount 1 ; 
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "Validation Error: Measurement must have exactly one integer systolic value." ;
+    ] ;
+    sh:property [
+        sh:path ex:diastolic ;
+        sh:minCount 1 ; 
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "Validation Error: Measurement must have exactly one integer diastolic value." ;
+    ] .
+
+
+# ==========================================
+# 3. UNIT TESTING DATA MATRIX (ABox Mock Cases)
+# ==========================================
+
+# Case A: Control Group (Passes SHACL, but should be filtered out of the SPARQL CQ)
+ex:PatientAlice rdf:type ex:Patient ;
+    ex:hasMeasurement ex:MeasurementAlice .
+
+ex:MeasurementAlice rdf:type ex:BloodPressureMeasurement ;
+    ex:systolic 120 ;
+    ex:diastolic 80 .
+
+# Case B: Structural Fail Case (Missing mandatory object relationship property entirely)
+ex:PatientBob rdf:type ex:Patient .
+
+# Case C: Functional Target Group (Passes SPARQL logic, but fails structural integrity shape rules)
+ex:PatientCharlie rdf:type ex:Patient ;
+    ex:hasMeasurement ex:MeasurementCharlie .
+
+ex:MeasurementCharlie rdf:type ex:BloodPressureMeasurement ;
+    ex:systolic 135 . # Deliberately missing the mandatory 'ex:diastolic' data parameter
