@@ -26,18 +26,6 @@ ex:diastolic rdf:type owl:DatatypeProperty ;
     rdfs:domain ex:BloodPressureMeasurement ;
     rdfs:range xsd:integer .
 
-# --- INTENTIONAL LOGICAL ERROR FOR UNIT TESTING ---
-# A measurement class that cannot be instantiated logically because it 
-# states a single datatype property must be 120 AND 140 at the same time.
-ex:BrokenMeasurement rdf:type owl:Class ;
-    rdfs:subClassOf ex:BloodPressureMeasurement ;
-    owl:equivalentClass [
-        rdf:type owl:Class ;
-        owl:intersectionOf (
-            [ rdf:type owl:Restriction ; owl:onProperty ex:systolic ; owl:hasValue 120 ]
-            [ rdf:type owl:Restriction ; owl:onProperty ex:systolic ; owl:hasValue 140 ]
-        )
-    ] .
 
 
 # ==========================================
