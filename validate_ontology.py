@@ -137,18 +137,26 @@ def run_pipeline():
         rdflib_graph.add((onto_uri, OWL.versionInfo, Literal(git_tag)))
         rdflib_graph.add((onto_uri, OWL.versionIRI, URIRef(f"{onto_uri}/{git_tag}")))
         
-        # Export stamped version of file to publishing directory
-        rdflib_graph.serialize(destination="public/healthcare_ontology.ttl", format="turtle")
+        # Export the version-stamped Turtle file to the publishing directory
+        output_ttl_path = "public/healthcare_ontology.ttl"
+        rdflib_graph.serialize(destination=output_ttl_path, format="turtle")
         
-        # Build pyLODE template site
-        html_doc = pylode.PylodeHtml(ontology="public/healthcare_ontology.ttl")
-        html_doc.render(destination="public/index.html")
+        # ✅ FIX: Use the standard open-source API function to compile the HTML string
+        html_content = pylode.MakeDocco(
+            input_data_file=output_ttl_path,
+            outputformat="html",
+            profile="ontdoc"
+        ).document()
+        
+        # Write the compiled HTML text payload out to your GitHub Pages directory
+        with open("public/index.html", "w", encoding="utf-8") as f:
+            f.write(html_content)
+            
         print(f"✅ Success: Interactive HTML site and SemVer stamped file generated with metadata: {git_tag}")
         sys.exit(0)
     except Exception as e:
         print(f"❌ Documentation Error: {e}")
         sys.exit(5)
-
 
 
 
