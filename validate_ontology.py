@@ -13,12 +13,29 @@ except ImportError:
     pass
 # =====================================================================
 
-# 2. Fix pyLODE Legacy str.decode() String Crash
-# Dynamically injects a text-safe passthrough decode handler onto Python 3 strings
-if not hasattr(str, 'decode'):
-    # Assign a custom lambda that returns the string itself if decode is invoked
-    setattr(str, 'decode', lambda self, *args, **kwargs: self)
+# 2. Fix pyLODE Legacy str.decode() String Crash via Namespace Mocking
+class PatchStr(str):
+    """Custom string subclass that safely provides a passthrough decode method."""
+    def decode(self, *args, **kwargs):
+        return self
+
+# Save a reference to Python's real built-in file opener
+real_open = builtins.open
+
+def custom_open(*args, **kwargs):
+    """A file opener proxy that intercepts reads and upgrades strings to PatchStr."""
+    file_obj = real_open(*args, **kwargs)
+    # Intercept the read method dynamically on the returned file instance
+    real_read = file_obj.read
+    def patched_read(*r_args, **r_kwargs):
+        return PatchStr(real_read(*r_args, **r_kwargs))
+    file_obj.read = patched_read
+    return file_obj
+
+# Intercept and swap the open function used inside the pylode namespace
+pylode.open = custom_open
 # =====================================================================
+
 
 import pylode
 import os
