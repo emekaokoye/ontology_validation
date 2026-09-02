@@ -131,24 +131,36 @@ def run_pipeline():
     try:
         os.makedirs("public", exist_ok=True)
         
-        # Inject Dynamic SemVer Metadata if run inside CI
+        # 1. Dynamically locate the true ontology base URI statement in the file
+        onto_uri = None
+        for s in rdflib_graph.subjects(RDF.type, OWL.Ontology):
+            onto_uri = s
+            break
+            
+        # Fallback if the statement cannot be retrieved dynamically
+        if onto_uri is None:
+            onto_uri = URIRef("http://example.org")
+            rdflib_graph.add((onto_uri, RDF.type, OWL.Ontology))
+            
+        # 2. Inject Dynamic SemVer Metadata using the exact matching subject node
         git_tag = os.environ.get("GITHUB_REF_NAME", "vDevelopment")
-        onto_uri = URIRef("http://example.org")
         rdflib_graph.add((onto_uri, OWL.versionInfo, Literal(git_tag)))
-        rdflib_graph.add((onto_uri, OWL.versionIRI, URIRef(f"{onto_uri}/{git_tag}")))
+        
+        # Build clean string variations for the version IRI suffix path safely
+        base_string = str(onto_uri).rstrip('#').rstrip('/')
+        rdflib_graph.add((onto_uri, OWL.versionIRI, URIRef(f"{base_string}/{git_tag}")))
         
         # Export the version-stamped Turtle file to the publishing directory
         output_ttl_path = "public/healthcare_ontology.ttl"
         rdflib_graph.serialize(destination=output_ttl_path, format="turtle")
         
-        # ✅ FIX: Use the standard open-source API function to compile the HTML string
+        # 3. Use MakeDocco to compile the documentation to HTML string layout
         html_content = pylode.MakeDocco(
             input_data_file=output_ttl_path,
             outputformat="html",
             profile="ontdoc"
         ).document()
         
-        # Write the compiled HTML text payload out to your GitHub Pages directory
         with open("public/index.html", "w", encoding="utf-8") as f:
             f.write(html_content)
             
