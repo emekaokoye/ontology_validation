@@ -1,6 +1,7 @@
 import sys
 import pylode
 import os
+import re
 
 # 1. Import RDFlib components explicitly
 from rdflib import Graph as RDFLibGraph, URIRef, Literal, OWL, RDF
