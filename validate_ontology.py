@@ -1,4 +1,18 @@
+# =====================================================================
+# 🛠️ SYSTEM ENVIRONMENT PATCH: Fixes pyLODE Legacy JSON-LD Module Crash
+# =====================================================================
 import sys
+import rdflib
+
+# Dynamic routing patch to satisfy pyLODE's legacy rdflib_jsonld lookup paths
+try:
+    import rdflib.plugins.serializers.jsonld as modern_jsonld
+    sys.modules['rdflib_jsonld'] = modern_jsonld
+    sys.modules['rdflib_jsonld.serializer'] = modern_jsonld
+except ImportError:
+    pass
+# =====================================================================
+
 import pylode
 import os
 import re

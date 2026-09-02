@@ -34,7 +34,8 @@ jobs:
     - name: Install Semantic Verification and Documentation Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install rdflib pyshacl owlready2 pylode==2.8.5 rdflib-jsonld
+        # Cleaned up and removed the redundant rdflib-jsonld package addition
+        pip install rdflib pyshacl owlready2 pylode==2.8.5 
 
     # ✅ FIX: Extract index 0 from the path array cleanly to discard brackets and quotes
     - name: Patch pyLODE Environment Workspace File Bug
