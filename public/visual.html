@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ontology Knowledge Graph WebVOWL Visualization</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; }
+        #nav-bar { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 40px;}
+        #nav-bar a { color: #1abc9c; text-decoration: none; font-weight: bold; margin-left: 15px;}
+        iframe { width: 100%; height: calc(100% - 60px); border: none; }
+    </style>
+</head>
+<body>
+    <div id="nav-bar">
+        <span><strong>Healthcare Ontology</strong> | Visual Graph Engine</span>
+        <div>
+            <a href="index.html">← Back to PyLODE Documentation Docs</a>
+            <a href="healthcare_ontology.ttl" download>Download Turtle Asset (.ttl)</a>
+        </div>
+    </div>
+    
+    <!-- Embeds the official open-source WebVOWL app service layer passing our raw hosting URI asset path dynamically -->
+    <script>
+        // Dynamically compute current repository deployment path URL dynamically
+        const currentOrigin = window.location.origin;
+        const currentPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        const ontologyUrl = `${currentOrigin}${currentPath}/healthcare_ontology.ttl`;
+        
+        // Direct the WebVOWL cloud runtime pointer to parse our dynamic asset
+        document.write(`<iframe src="https://visualdataweb.de{encodeURIComponent(ontologyUrl)}"></iframe>`);
+    </script>
+</body>
+</html>
