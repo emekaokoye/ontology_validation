@@ -36,11 +36,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install rdflib pyshacl owlready2 pylode==2.8.5
 
+    # ✅ FIX: Extract index 0 from the path array cleanly to discard brackets and quotes
     - name: Patch pyLODE Environment Workspace File Bug
       run: |
-        SITE_PACKAGES_DIR=$(python -c "import site; print(site.getsitepackages())")
+        SITE_PACKAGES_DIR=$(python -c "import site; print(site.getsitepackages()[0])")
         touch "$SITE_PACKAGES_DIR/pyproject.toml"
-
+        
     - name: Execute Validation Pipeline and Generate pyLODE Web Portal
       run: |
         python validate_ontology.py
