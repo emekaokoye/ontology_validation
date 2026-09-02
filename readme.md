@@ -9,7 +9,7 @@ By treating the ontology as application code, this framework ensures that struct
 ## 🚀 Architectural Vision & Test Stack
 
 Ontology testing is mapped across three distinct validation layers inside a fully automated pipeline:
-
+```
 [ Git Push / PR ]
 	│
 	▼
@@ -27,7 +27,7 @@ Pass
 ┌───────────┐      ❌ Fail (Exit 1) ──► [ Halt Build ]
 │  Phase 3  │ ─── Functional Unit Testing
 └───────────┘      (SPARQL Competency Question Verification)
-
+```
 
 ### 1. Phase 1: Semantic Reasoner Compilation (Logic Check)
 *   **Tool:** `Owlready2` wrapping the **HermiT Description Logic (DL) Reasoner**.
