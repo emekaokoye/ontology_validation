@@ -1,18 +1,18 @@
 # =====================================================================
-# 🛠️ SYSTEM ENVIRONMENT PATCH: Fixes pyLODE Legacy JSON-LD Module Crash
+# 🛠️ SYSTEM ENVIRONMENT PATCH: Fixes pyLODE Compatibility Bugs Cleanly
 # =====================================================================
 import sys
-import builtins  # 👈 Added missing explicit import statement here
+import builtins
 import rdflib
+import pylode  # 👈 Moved to the top to resolve the NameError immediately
 
-# Dynamic routing patch to satisfy pyLODE's legacy rdflib_jsonld lookup paths
+# 1. Fix pyLODE Legacy JSON-LD Module Crash
 try:
     import rdflib.plugins.serializers.jsonld as modern_jsonld
     sys.modules['rdflib_jsonld'] = modern_jsonld
     sys.modules['rdflib_jsonld.serializer'] = modern_jsonld
 except ImportError:
     pass
-# =====================================================================
 
 # 2. Fix pyLODE Legacy str.decode() String Crash via Namespace Mocking
 class PatchStr(str):
