@@ -61,16 +61,23 @@ def run_pipeline():
         with onto:
             owlready2.sync_reasoner(infer_property_values=True)
         
-        # Scan for structural concepts assigned to owl:Nothing
-        unsatisfiable_classes = list(onto.nothing.descendants())
-        if owlready2.owl.Nothing in unsatisfiable_classes:
-            unsatisfiable_classes.remove(owlready2.owl.Nothing)
+        # ✅ FIX: Look up owl:Nothing safely via the global IRI registry instead of the shortcut onto.nothing
+        owl_nothing = owlready2.IRIS["http://w3.org"]
+        
+        unsatisfiable_classes = []
+        if owl_nothing is not None:
+            # Capture any custom concepts that have been inferred as equivalent to owl:Nothing
+            unsatisfiable_classes = list(owl_nothing.descendants())
+            if owl_nothing in unsatisfiable_classes:
+                unsatisfiable_classes.remove(owl_nothing)
             
         if unsatisfiable_classes:
-            print("❌ Reasoner Failure: Found unsatisfiable classes.")
+            print("❌ Reasoner Failure: Found unsatisfiable (logically broken) classes:")
+            for cls in unsatisfiable_classes:
+                print(f" - {cls.name}")
             sys.exit(3)
         else:
-            print("✅ Reasoner Success: Ontology structure is consistent.")
+            print("✅ Reasoner Success: Ontology structure is completely consistent.")
             
     except Exception as e:
         print(f"❌ Reasoner Error: An exception occurred during logical inference: {e}")
