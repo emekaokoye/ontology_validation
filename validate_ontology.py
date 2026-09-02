@@ -1,9 +1,15 @@
 import sys
-from rdflib import Graph, URIRef, Literal, OWL
-from pyshacl import validate
-from owlready2 import *
 import pylode
 import os
+
+# 1. Import RDFlib components explicitly
+from rdflib import Graph as RDFLibGraph, URIRef, Literal, OWL, RDF
+
+# 2. Import SHACL components explicitly
+from pyshacl import validate
+
+# 3. Import Owlready2 components explicitly (DO NOT USE '*')
+import owlready2
 
 
 def run_naming_linter(graph):
@@ -38,35 +44,60 @@ def run_naming_linter(graph):
     return True
 
 def run_pipeline():
-    # --- PHASE 1: REASONER (Owlready2) ---
     print("=== Phase 1: Description Logic (DL) Reasoner via Owlready2 ===")
+    # Instantiate the clean RDFlib graph variant using its new unique variable alias
+    rdflib_graph = RDFLibGraph()
+    
     try:
-        rdflib_graph = Graph()
         rdflib_graph.parse("healthcare_ontology.ttl", format="turtle")
+        
+        # Bridge graph schemas by serializing an XML payload for Owlready2
         rdflib_graph.serialize(destination="temp_onto.owl", format="xml")
-        onto = get_ontology("file://temp_onto.owl").load()
+        
+        # Access Owlready2 components safely via explicit namespace notation
+        onto = owlready2.get_ontology("file://temp_onto.owl").load()
+        
+        print("Invoking HermiT Semantic Reasoner Engine...")
         with onto:
-            sync_reasoner(infer_property_values=True)
+            owlready2.sync_reasoner(infer_property_values=True)
+        
+        # Scan for structural concepts assigned to owl:Nothing
         unsatisfiable_classes = list(onto.nothing.descendants())
-        if owl.Nothing in unsatisfiable_classes:
-            unsatisfiable_classes.remove(owl.Nothing)
+        if owlready2.owl.Nothing in unsatisfiable_classes:
+            unsatisfiable_classes.remove(owlready2.owl.Nothing)
+            
         if unsatisfiable_classes:
             print("❌ Reasoner Failure: Found unsatisfiable classes.")
             sys.exit(3)
-        print("✅ Reasoner Success: Ontology structure is consistent.")
+        else:
+            print("✅ Reasoner Success: Ontology structure is consistent.")
+            
+    except Exception as e:
+        print(f"❌ Reasoner Error: An exception occurred during logical inference: {e}")
+        sys.exit(4)
     finally:
-        if os.path.exists("temp_onto.owl"): os.remove("temp_onto.owl")
+        if os.path.exists("temp_onto.owl"): 
+            os.remove("temp_onto.owl")
+
 
     # --- PHASE 2: SHACL ---
     print("\n=== Phase 2: Structural Integrity Check via SHACL ===")
-    conforms, _, results_text = validate(rdflib_graph, shacl_graph=rdflib_graph, ont_graph=rdflib_graph, inference='rdfs')
+    conforms, _, results_text = validate(
+        data_graph=rdflib_graph,
+        shacl_graph=rdflib_graph,
+        ont_graph=rdflib_graph,
+        inference='rdfs'
+    )
     print(f"SHACL Conforms: {conforms}")
+    if not conforms:
+        print(results_text)
+        sys.exit(2)
 
     # --- PHASE 2a: NAMING LINTER ---
-    linter_passed = run_naming_linter(rdflib_graph)
-    if not linter_passed:
-        sys.exit(6) # Custom unique exit code signaling Linter syntax failure
-
+    if not run_naming_linter(rdflib_graph):
+        sys.exit(6)
+        
+        
     # --- PHASE 3: SPARQL ---
     print("\n=== Phase 3: Competency Question Verification via SPARQL ===")
     sparql_query = """
