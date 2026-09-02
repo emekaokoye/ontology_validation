@@ -2,6 +2,7 @@
 # 🛠️ SYSTEM ENVIRONMENT PATCH: Fixes pyLODE Legacy JSON-LD Module Crash
 # =====================================================================
 import sys
+import builtins  # 👈 Added missing explicit import statement here
 import rdflib
 
 # Dynamic routing patch to satisfy pyLODE's legacy rdflib_jsonld lookup paths
