@@ -4,7 +4,7 @@
 import sys
 import builtins
 import rdflib
-import pylode  # 👈 Moved to the top to resolve the NameError immediately
+import pylode
 
 # 1. Fix pyLODE Legacy JSON-LD Module Crash
 try:
@@ -14,28 +14,25 @@ try:
 except ImportError:
     pass
 
-# 2. Fix pyLODE Legacy str.decode() String Crash via Namespace Mocking
-class PatchStr(str):
-    """Custom string subclass that safely provides a passthrough decode method."""
-    def decode(self, *args, **kwargs):
-        return self
+# 2. Fix pyLODE Legacy str.decode() String Crash globally via code execution injection
+# Since we cannot patch 'str' directly, we intercept rdflib's string parsing routines
+# which pyLODE relies on when reading text sequences.
+import codecs
+original_getdecoder = codecs.getdecoder
 
-# Save a reference to Python's real built-in file opener
-real_open = builtins.open
+def custom_getdecoder(encoding):
+    """Intercepts utf-8 decoder requests to make them completely tolerant of raw strings."""
+    orig_decoder = original_getdecoder(encoding)
+    def wrapper(data, errors='strict'):
+        if isinstance(data, str):
+            # If pyLODE accidentally passes a decoded string to a byte decoder, pass it back as-is safely
+            return data, len(data)
+        return orig_decoder(data, errors)
+    return wrapper
 
-def custom_open(*args, **kwargs):
-    """A file opener proxy that intercepts reads and upgrades strings to PatchStr."""
-    file_obj = real_open(*args, **kwargs)
-    # Intercept the read method dynamically on the returned file instance
-    real_read = file_obj.read
-    def patched_read(*r_args, **r_kwargs):
-        return PatchStr(real_read(*r_args, **r_kwargs))
-    file_obj.read = patched_read
-    return file_obj
-
-# Intercept and swap the open function used inside the pylode namespace
-pylode.open = custom_open
+codecs.getdecoder = custom_getdecoder
 # =====================================================================
+
 
 
 import pylode
