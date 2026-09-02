@@ -13,6 +13,13 @@ except ImportError:
     pass
 # =====================================================================
 
+# 2. Fix pyLODE Legacy str.decode() String Crash
+# Dynamically injects a text-safe passthrough decode handler onto Python 3 strings
+if not hasattr(str, 'decode'):
+    # Assign a custom lambda that returns the string itself if decode is invoked
+    setattr(str, 'decode', lambda self, *args, **kwargs: self)
+# =====================================================================
+
 import pylode
 import os
 import re
