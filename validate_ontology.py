@@ -90,31 +90,39 @@ def run_pipeline():
     try:
         os.makedirs("public", exist_ok=True)
         
-        # Locate true ontology base URI dynamically
+        # 1. Dynamically locate the true ontology base URI statement in the file
         onto_uri = next(rdflib_graph.subjects(RDF.type, OWL.Ontology), URIRef("http://example.org"))
-        
-        # Inject SemVer tags
+            
+        # 2. Inject Dynamic SemVer Metadata using the exact matching subject node
         git_tag = os.environ.get("GITHUB_REF_NAME", "vDevelopment")
         rdflib_graph.add((onto_uri, OWL.versionInfo, Literal(git_tag)))
+        
+        # Build clean string variations for the version IRI suffix path safely
         base_string = str(onto_uri).rstrip('#').rstrip('/')
         rdflib_graph.add((onto_uri, OWL.versionIRI, URIRef(f"{base_string}/{git_tag}")))
         
-        # Save structural Turtle asset for reference downloads
-        rdflib_graph.serialize(destination="public/healthcare_ontology.ttl", format="turtle")
+        # Export the version-stamped Turtle file to the publishing directory
+        output_ttl_path = "public/healthcare_ontology.ttl"
+        rdflib_graph.serialize(destination=output_ttl_path, format="turtle")
         
-        # ✅ THE PERMANENT FIX: Instantiating pyLODE via its native Graph controller (OntDoc) 
-        # By passing the pre-loaded rdflib_graph directly, pyLODE bypasses its internal file opener and str.decode() step entirely.
-        html_compiler = pylode.OntDoc(rdflib_graph)
+        # ✅ THE STABLE API FIX: Import OntPub and pass it the version-stamped file path
+        from pylode.profiles.ontpub import OntPub
+        
+        print("Compiling interactive human-readable HTML documentation...")
+        html_compiler = OntPub(ontology=output_ttl_path)
         html_content = html_compiler.make_html()
         
+        # Write the compiled HTML payload out to your GitHub Pages directory
         with open("public/index.html", "w", encoding="utf-8") as f:
             f.write(html_content)
             
-        print(f"✅ Success: Documentation compiled cleanly into HTML without string formatting exceptions! Version: {git_tag}")
+        print(f"✅ Success: Interactive HTML site and SemVer stamped file generated with metadata: {git_tag}")
         sys.exit(0)
     except Exception as e:
         print(f"❌ Documentation Error: {e}")
         sys.exit(5)
+
+
 
 if __name__ == '__main__':
     run_pipeline()
