@@ -1,13 +1,37 @@
 # =====================================================================
-# 🛠️ SYSTEM ENVIRONMENT PATCH: Fixes pyLODE Legacy JSON-LD Module Crash
+# 🛠️ SYSTEM ENVIRONMENT PATCH: Fixes pyLODE Compatibility Bugs Cleanly
 # =====================================================================
 import sys
+import codecs
+
+# 1. Fix pyLODE Legacy JSON-LD Module Crash
 try:
     import rdflib.plugins.serializers.jsonld as modern_jsonld
     sys.modules['rdflib_jsonld'] = modern_jsonld
     sys.modules['rdflib_jsonld.serializer'] = modern_jsonld
 except ImportError:
     pass
+
+# 2. Fix pyLODE Legacy str.decode() String Crash via Global Codec Overrides
+# Instead of modifying the 'str' type, we wrap Python's default UTF-8 text decoder.
+# If pyLODE passes a string where it expected bytes, we safely return it as-is.
+def patch_utf8_decoder(encoding):
+    if encoding == 'utf-8':
+        base_codec = codecs.lookup_error('strict')
+        def custom_decode(data, errors='strict'):
+            if isinstance(data, str):
+                return data, len(data)  # Pass string back without throwing attribute error
+            return codecs.utf_8_decode(data, errors)
+        
+        return codecs.CodecInfo(
+            name='utf-8',
+            encode=codecs.utf_8_encode,
+            decode=custom_decode
+        )
+    return None
+
+# Register our custom codec handler to capture pyLODE's internal text stream conversions
+codecs.register(patch_utf8_decoder)
 # =====================================================================
 
 import os
