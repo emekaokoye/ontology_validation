@@ -149,17 +149,23 @@ def run_pipeline():
             base=URIRef("http://example.org")
         )
         
-        # ✅ THE SUBPROCESS ISOLATION FIX: 
-        # Instead of calling raw 'pylode' directly, we use 'python -c' to inject our 
-        # sys.modules routing patch *before* executing the main pyLODE CLI entry point!
+        # ✅ THE ABSOLUTE REMEDY:
+        # Patch Graph.serialize inside the isolated command thread to convert return 
+        # string definitions back to encoded bytes so pyLODE's internal .decode() succeeds!
         import subprocess
-        print("Invoking pyLODE CLI compiler engine with dynamic environment hot-patches...")
+        print("Invoking pyLODE CLI compiler engine with dynamic serialization patches...")
         
         patch_and_run_cmd = (
             "import sys; "
+            "import rdflib; "
             "import rdflib.plugins.serializers.jsonld as jld; "
             "sys.modules['rdflib_jsonld'] = jld; "
             "sys.modules['rdflib_jsonld.serializer'] = jld; "
+            "orig_serialize = rdflib.Graph.serialize; "
+            "def patched_serialize(self, *args, **kwargs): "
+            "    res = orig_serialize(self, *args, **kwargs); "
+            "    return res.encode('utf-8') if isinstance(res, str) else res; "
+            "rdflib.Graph.serialize = patched_serialize; "
             "from pylode.cli import main; "
             "sys.argv = ['pylode', '-i', '" + output_ttl_path + "', '-o', 'public/index.html', '-p', 'ontdoc']; "
             "main()"
@@ -171,7 +177,7 @@ def run_pipeline():
             text=True
         )
         
-        # Check execution metrics
+        # Evaluation check blocks
         if result.returncode == 0:
             print(f"✅ Success: Interactive HTML site and SemVer stamped file generated with metadata: {git_tag}")
             sys.exit(0)
