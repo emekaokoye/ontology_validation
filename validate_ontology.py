@@ -1,8 +1,17 @@
+# =====================================================================
+# 🛠️ SYSTEM ENVIRONMENT PATCH: Fixes pyLODE Legacy JSON-LD Module Crash
+# =====================================================================
 import sys
+try:
+    import rdflib.plugins.serializers.jsonld as modern_jsonld
+    sys.modules['rdflib_jsonld'] = modern_jsonld
+    sys.modules['rdflib_jsonld.serializer'] = modern_jsonld
+except ImportError:
+    pass
+# =====================================================================
+
 import os
 import re
-
-# 1. Import explicit modules (NO MORE WILDCARDS OR STR PATCHES)
 from rdflib import Graph as RDFLibGraph, URIRef, Literal, OWL, RDF
 from pyshacl import validate
 import owlready2
@@ -42,7 +51,8 @@ def run_pipeline():
         
         owl_nothing = owlready2.IRIS["http://w3.org"]
         unsaturable = list(owl_nothing.descendants()) if owl_nothing is not None else []
-        if owl_nothing in unsaturable: unsaturable.remove(owl_nothing)
+        if owl_nothing in unsaturable: 
+            unsaturable.remove(owl_nothing)
             
         if unsaturable:
             print("❌ Reasoner Failure: Found unsatisfiable classes.")
@@ -52,14 +62,16 @@ def run_pipeline():
         print(f"❌ Reasoner Error: {e}")
         sys.exit(4)
     finally:
-        if os.path.exists("temp_onto.owl"): os.remove("temp_onto.owl")
+        if os.path.exists("temp_onto.owl"): 
+            os.remove("temp_onto.owl")
 
     # --- PHASE 2: SHACL ---
     print("\n=== Phase 2: Structural Integrity Check via SHACL ===")
     conforms, _, results_text = validate(rdflib_graph, shacl_graph=rdflib_graph, ont_graph=rdflib_graph, inference='rdfs')
     print(f"SHACL Conforms: {conforms}")
     if not conforms:
-        print(results_text); sys.exit(2)
+        print(results_text)
+        sys.exit(2)
 
     # --- PHASE 2a: NAMING LINTER ---
     if not run_naming_linter(rdflib_graph):
@@ -90,31 +102,24 @@ def run_pipeline():
     try:
         os.makedirs("public", exist_ok=True)
         
-        # 1. Look for the true ontology base URI statement or fallback to a clean base
         onto_uri = next(rdflib_graph.subjects(RDF.type, OWL.Ontology), None)
         if onto_uri is None:
             onto_uri = URIRef("http://example.org")
             
-        # Ensure the ontology type declaration is absolutely explicit and un-prefixed
         rdflib_graph.add((onto_uri, RDF.type, OWL.Ontology))
             
-        # 2. Inject Dynamic SemVer Metadata
         git_tag = os.environ.get("GITHUB_REF_NAME", "vDevelopment")
         rdflib_graph.add((onto_uri, OWL.versionInfo, Literal(git_tag)))
-        
-        # Build clean string variations for the version IRI suffix path safely
         base_string = str(onto_uri).rstrip('#').rstrip('/')
         rdflib_graph.add((onto_uri, OWL.versionIRI, URIRef(f"{base_string}/{git_tag}")))
         
-        # ✅ FIX: Serialize the file with an explicit base URI so the root node outputs as an absolute statement (<http://...>)
         output_ttl_path = "public/healthcare_ontology.ttl"
         rdflib_graph.serialize(
             destination=output_ttl_path, 
             format="turtle",
-            base=URIRef("http://example.org") # Forces absolute prefix handling
+            base=URIRef("http://example.org")
         )
         
-        # 3. Call the MakeDocco factory 
         print("Compiling interactive human-readable HTML documentation via pyLODE...")
         html_compiler = pylode.MakeDocco(
             input_data_file=output_ttl_path,
@@ -132,8 +137,6 @@ def run_pipeline():
     except Exception as e:
         print(f"❌ Documentation Error: {e}")
         sys.exit(5)
-
-
 
 if __name__ == '__main__':
     run_pipeline()
