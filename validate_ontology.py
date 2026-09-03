@@ -105,12 +105,18 @@ def run_pipeline():
         output_ttl_path = "public/healthcare_ontology.ttl"
         rdflib_graph.serialize(destination=output_ttl_path, format="turtle")
         
-        # ✅ THE STABLE API FIX: Import OntPub and pass it the version-stamped file path
-        from pylode.profiles.ontpub import OntPub
+        # ✅ THE UNIVERSAL VERSION FIX: Call the global MakeDocco layout engine factory
+        print("Compiling interactive human-readable HTML documentation via pyLODE...")
         
-        print("Compiling interactive human-readable HTML documentation...")
-        html_compiler = OntPub(ontology=output_ttl_path)
-        html_content = html_compiler.make_html()
+        # We explicitly supply 'ontdoc' profile token string (supported across v2.x and v3.x layout forks)
+        html_compiler = pylode.MakeDocco(
+            input_data_file=output_ttl_path,
+            outputformat="html",
+            profile="ontdoc"
+        )
+        
+        # Compile text representation
+        html_content = html_compiler.document()
         
         # Write the compiled HTML payload out to your GitHub Pages directory
         with open("public/index.html", "w", encoding="utf-8") as f:
