@@ -153,15 +153,16 @@ def run_pipeline():
         # Instead of calling pyLODE methods in-memory where it hits the text decoder crash,
         # we invoke its global CLI app engine directly inside an isolated subprocess.
         # ✅ THE CRITICAL CLI FIX: Map options using the correct -o flag structures
+        # ✅ THE ACCURATE CLI FIX: Bind parameters strictly using explicit input/output flags
         import subprocess
-        print("Invoking pyLODE CLI compiler engine with proper argument structures...")
+        print("Invoking pyLODE CLI compiler engine with precise system flag parameters...")
         
         result = subprocess.run(
             [
                 "pylode", 
-                "-o", "public/index.html",                 # Specifies destination path
-                "-p", "ontpub",                             # Explicit profile flag
-                output_ttl_path                             # Trailing input positional argument
+                "-i", output_ttl_path,                      # Explicit input file flag
+                "-o", "public/index.html",                 # Explicit output destination flag
+                "-p", "ontdoc"                              # Explicit profile specification flag
             ],
             capture_output=True,
             text=True
