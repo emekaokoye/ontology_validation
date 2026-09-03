@@ -149,27 +149,34 @@ def run_pipeline():
             base=URIRef("http://example.org")
         )
         
-        # ✅ THE ABSOLUTE REMEDY:
-        # Patch Graph.serialize inside the isolated command thread to convert return 
-        # string definitions back to encoded bytes so pyLODE's internal .decode() succeeds!
+        # ✅ THE VALID INDENTATION FIX:
+        # We restructure the string command using triple quotes and true newlines.
+        # This allows Python to parse the inline 'def' statement layout cleanly.
         import subprocess
-        print("Invoking pyLODE CLI compiler engine with dynamic serialization patches...")
+        print("Invoking pyLODE CLI compiler engine with valid inline syntax mappings...")
         
-        patch_and_run_cmd = (
-            "import sys; "
-            "import rdflib; "
-            "import rdflib.plugins.serializers.jsonld as jld; "
-            "sys.modules['rdflib_jsonld'] = jld; "
-            "sys.modules['rdflib_jsonld.serializer'] = jld; "
-            "orig_serialize = rdflib.Graph.serialize; "
-            "def patched_serialize(self, *args, **kwargs): "
-            "    res = orig_serialize(self, *args, **kwargs); "
-            "    return res.encode('utf-8') if isinstance(res, str) else res; "
-            "rdflib.Graph.serialize = patched_serialize; "
-            "from pylode.cli import main; "
-            "sys.argv = ['pylode', '-i', '" + output_ttl_path + "', '-o', 'public/index.html', '-p', 'ontdoc']; "
-            "main()"
-        )
+        patch_and_run_cmd = f"""
+import sys
+import rdflib
+import rdflib.plugins.serializers.jsonld as jld
+
+sys.modules['rdflib_jsonld'] = jld
+sys.modules['rdflib_jsonld.serializer'] = jld
+
+orig_serialize = rdflib.Graph.serialize
+
+def patched_serialize(self, *args, **kwargs):
+    res = orig_serialize(self, *args, **kwargs)
+    if isinstance(res, str):
+        return res.encode('utf-8')
+    return res
+
+rdflib.Graph.serialize = patched_serialize
+
+from pylode.cli import main
+sys.argv = ['pylode', '-i', '{output_ttl_path}', '-o', 'public/index.html', '-p', 'ontdoc']
+main()
+"""
         
         result = subprocess.run(
             [sys.executable, "-c", patch_and_run_cmd],
@@ -177,7 +184,7 @@ def run_pipeline():
             text=True
         )
         
-        # Evaluation check blocks
+        # Evaluation check metrics
         if result.returncode == 0:
             print(f"✅ Success: Interactive HTML site and SemVer stamped file generated with metadata: {git_tag}")
             sys.exit(0)
