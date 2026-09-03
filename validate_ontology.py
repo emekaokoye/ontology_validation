@@ -3,8 +3,7 @@
 # =====================================================================
 import sys
 import builtins
-import rdflib
-import pylode
+import codecs
 
 # 1. Fix pyLODE Legacy JSON-LD Module Crash
 try:
@@ -14,31 +13,26 @@ try:
 except ImportError:
     pass
 
-# 2. Fix pyLODE Legacy str.decode() String Crash globally via code execution injection
-# Since we cannot patch 'str' directly, we intercept rdflib's string parsing routines
-# which pyLODE relies on when reading text sequences.
-import codecs
-original_getdecoder = codecs.getdecoder
+# 2. Fix pyLODE Legacy str.decode() String Crash via Codecs Incremental Decoder Patch
+# Since 'str' is immutable, we intercept the text decoding pipeline at the source.
+original_decode = codecs.decode
 
-def custom_getdecoder(encoding):
-    """Intercepts utf-8 decoder requests to make them completely tolerant of raw strings."""
-    orig_decoder = original_getdecoder(encoding)
-    def wrapper(data, errors='strict'):
-        if isinstance(data, str):
-            # If pyLODE accidentally passes a decoded string to a byte decoder, pass it back as-is safely
-            return data, len(data)
-        return orig_decoder(data, errors)
-    return wrapper
+def custom_decode(obj, encoding='utf-8', errors='strict'):
+    """Intercepts decoding. If the object is already a string, return it as-is."""
+    if isinstance(obj, str):
+        return obj
+    return original_decode(obj, encoding, errors)
 
-codecs.getdecoder = custom_getdecoder
+# Re-bind the core codec decoders globally inside Python's language scope
+codecs.decode = custom_decode
+builtins.str.decode = lambda self, *args, **kwargs: self
 # =====================================================================
 
-
-
-import pylode
+# Keep your remaining explicit module imports exactly the same below:
 import os
 import re
-
+import rdflib
+import pylode
 # 1. Import RDFlib components explicitly
 from rdflib import Graph as RDFLibGraph, URIRef, Literal, OWL, RDF
 
@@ -47,6 +41,9 @@ from pyshacl import validate
 
 # 3. Import Owlready2 components explicitly (DO NOT USE '*')
 import owlready2
+
+
+
 
 
 def run_naming_linter(graph):
