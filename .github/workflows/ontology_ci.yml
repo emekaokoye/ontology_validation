@@ -3,34 +3,80 @@ name: Ontology CI Pipeline
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*.*.*' ] # Triggers a formal SemVer Release compilation
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
 jobs:
-  validate-ontology:
+  validate-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Code Repository
-      uses: actions/checkout@v5 # 👈 Upgraded for Node 24 compliance
+      uses: actions/checkout@v6
 
     - name: Set up Python Environment
-      uses: actions/setup-python@v6 # 👈 Upgraded for Node 24 compliance
+      uses: actions/setup-python@v7
       with:
         python-version: '3.11'
 
-    - name: Install Semantic Verification Dependencies
+    - name: Set up Java Environment for HermiT Reasoner
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Install Semantic Verification and Documentation Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install rdflib pyshacl pylode==2.8.5 owlready2 # 👈 Added pylode dependency package here
+        # Cleaned up and removed the redundant rdflib-jsonld package addition
+        pip install rdflib pyshacl owlready2 pylode==2.8.5 
 
-    # ✅ NEW STEP: Fixes the pyLODE v3.4.1 site-packages bug
+    # ✅ FIX: Extract index 0 from the path array cleanly to discard brackets and quotes
     - name: Patch pyLODE Environment Workspace File Bug
       run: |
         SITE_PACKAGES_DIR=$(python -c "import site; print(site.getsitepackages()[0])")
         touch "$SITE_PACKAGES_DIR/pyproject.toml"
-
-
-    - name: Execute Reasoner, SHACL, SPARQL, and pyLODE Framework
+        
+    - name: Execute Validation Pipeline and Generate pyLODE Web Portal
       run: |
         python validate_ontology.py
+
+    # Prepare visual assets for publishing folder
+    - name: Assemble Dashboard Visual Web Components
+      run: |
+        cp public/visual.html public/ 2>/dev/null || cp visual.html public/index_graph.html || true
+        # Rename visual.html as index_graph.html so it serves cleanly alongside index.html
+        mv public/visual.html public/graph.html || true
+
+    - name: Upload HTML Documentation Website Artifact
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'public/'
+
+    - name: Deploy Live Semantic Documentation Website
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/')
+      uses: actions/deploy-pages@v4
+
+    # --- ADVANCED VERSIONING BLOCK: Compiles Formal Releases on Git Tags ---
+    - name: Compile Formal Versioned Tag Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          public/healthcare_ontology.ttl
+          public/index.html
+        body: |
+          Automated Semantic Web Ontology Release for version ${{ github.ref_name }}.
+          
+          ### Validation Architecture Metrics Passed:
+          - Description Logic Inferences Consolidated (HermiT Engine)
+          - SHACL Assertions Conformed
+          - Naming Linters Validated
+          - SPARQL Competency Unit Tests Passed
