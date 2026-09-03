@@ -126,17 +126,22 @@ def run_pipeline():
     try:
         os.makedirs("public", exist_ok=True)
         
+        # 1. Dynamically locate the true ontology base URI statement in the file
         onto_uri = next(rdflib_graph.subjects(RDF.type, OWL.Ontology), None)
         if onto_uri is None:
             onto_uri = URIRef("http://example.org")
             
         rdflib_graph.add((onto_uri, RDF.type, OWL.Ontology))
             
+        # 2. Inject Dynamic SemVer Metadata using the exact matching subject node
         git_tag = os.environ.get("GITHUB_REF_NAME", "vDevelopment")
         rdflib_graph.add((onto_uri, OWL.versionInfo, Literal(git_tag)))
+        
+        # Build clean string variations for the version IRI suffix path safely
         base_string = str(onto_uri).rstrip('#').rstrip('/')
         rdflib_graph.add((onto_uri, OWL.versionIRI, URIRef(f"{base_string}/{git_tag}")))
         
+        # Export the version-stamped Turtle file to the publishing directory
         output_ttl_path = "public/healthcare_ontology.ttl"
         rdflib_graph.serialize(
             destination=output_ttl_path, 
@@ -144,20 +149,26 @@ def run_pipeline():
             base=URIRef("http://example.org")
         )
         
-        print("Compiling interactive human-readable HTML documentation via pyLODE...")
-        html_compiler = pylode.MakeDocco(
-            input_data_file=output_ttl_path,
-            outputformat="html",
-            profile="ontdoc"
+        # ✅ THE PERMANENT BYPASS: Shell execution isolation
+        # Instead of calling pyLODE methods in-memory where it hits the text decoder crash,
+        # we invoke its global CLI app engine directly inside an isolated subprocess.
+        import subprocess
+        print("Invoking pyLODE CLI compiler engine...")
+        
+        result = subprocess.run(
+            ["pylode", output_ttl_path, "public/index.html"],
+            capture_output=True,
+            text=True
         )
         
-        html_content = html_compiler.document()
-        
-        with open("public/index.html", "w", encoding="utf-8") as f:
-            f.write(html_content)
+        # If the isolated process succeeds, our page is generated cleanly
+        if result.returncode == 0:
+            print(f"✅ Success: Interactive HTML site and SemVer stamped file generated with metadata: {git_tag}")
+            sys.exit(0)
+        else:
+            print(f"❌ Subprocess pyLODE Compilation Failure:\n{result.stderr}")
+            sys.exit(5)
             
-        print(f"✅ Success: Interactive HTML site and SemVer stamped file generated with metadata: {git_tag}")
-        sys.exit(0)
     except Exception as e:
         print(f"❌ Documentation Error: {e}")
         sys.exit(5)
