@@ -152,11 +152,17 @@ def run_pipeline():
         # ✅ THE PERMANENT BYPASS: Shell execution isolation
         # Instead of calling pyLODE methods in-memory where it hits the text decoder crash,
         # we invoke its global CLI app engine directly inside an isolated subprocess.
+        # ✅ THE CRITICAL CLI FIX: Map options using the correct -o flag structures
         import subprocess
-        print("Invoking pyLODE CLI compiler engine...")
+        print("Invoking pyLODE CLI compiler engine with proper argument structures...")
         
         result = subprocess.run(
-            ["pylode", output_ttl_path, "public/index.html"],
+            [
+                "pylode", 
+                "-o", "public/index.html",                 # Specifies destination path
+                "-p", "ontpub",                             # Explicit profile flag
+                output_ttl_path                             # Trailing input positional argument
+            ],
             capture_output=True,
             text=True
         )
