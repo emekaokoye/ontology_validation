@@ -90,10 +90,15 @@ def run_pipeline():
     try:
         os.makedirs("public", exist_ok=True)
         
-        # 1. Dynamically locate the true ontology base URI statement in the file
-        onto_uri = next(rdflib_graph.subjects(RDF.type, OWL.Ontology), URIRef("http://example.org"))
+        # 1. Look for the true ontology base URI statement or fallback to a clean base
+        onto_uri = next(rdflib_graph.subjects(RDF.type, OWL.Ontology), None)
+        if onto_uri is None:
+            onto_uri = URIRef("http://example.org")
             
-        # 2. Inject Dynamic SemVer Metadata using the exact matching subject node
+        # Ensure the ontology type declaration is absolutely explicit and un-prefixed
+        rdflib_graph.add((onto_uri, RDF.type, OWL.Ontology))
+            
+        # 2. Inject Dynamic SemVer Metadata
         git_tag = os.environ.get("GITHUB_REF_NAME", "vDevelopment")
         rdflib_graph.add((onto_uri, OWL.versionInfo, Literal(git_tag)))
         
@@ -101,24 +106,24 @@ def run_pipeline():
         base_string = str(onto_uri).rstrip('#').rstrip('/')
         rdflib_graph.add((onto_uri, OWL.versionIRI, URIRef(f"{base_string}/{git_tag}")))
         
-        # Export the version-stamped Turtle file to the publishing directory
+        # ✅ FIX: Serialize the file with an explicit base URI so the root node outputs as an absolute statement (<http://...>)
         output_ttl_path = "public/healthcare_ontology.ttl"
-        rdflib_graph.serialize(destination=output_ttl_path, format="turtle")
+        rdflib_graph.serialize(
+            destination=output_ttl_path, 
+            format="turtle",
+            base=URIRef("http://example.org") # Forces absolute prefix handling
+        )
         
-        # ✅ THE UNIVERSAL VERSION FIX: Call the global MakeDocco layout engine factory
+        # 3. Call the MakeDocco factory 
         print("Compiling interactive human-readable HTML documentation via pyLODE...")
-        
-        # We explicitly supply 'ontdoc' profile token string (supported across v2.x and v3.x layout forks)
         html_compiler = pylode.MakeDocco(
             input_data_file=output_ttl_path,
             outputformat="html",
             profile="ontdoc"
         )
         
-        # Compile text representation
         html_content = html_compiler.document()
         
-        # Write the compiled HTML payload out to your GitHub Pages directory
         with open("public/index.html", "w", encoding="utf-8") as f:
             f.write(html_content)
             
