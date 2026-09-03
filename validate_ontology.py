@@ -149,36 +149,40 @@ def run_pipeline():
             base=URIRef("http://example.org")
         )
         
-        # ✅ THE PERMANENT BYPASS: Shell execution isolation
-        # Instead of calling pyLODE methods in-memory where it hits the text decoder crash,
-        # we invoke its global CLI app engine directly inside an isolated subprocess.
-        # ✅ THE CRITICAL CLI FIX: Map options using the correct -o flag structures
-        # ✅ THE ACCURATE CLI FIX: Bind parameters strictly using explicit input/output flags
+        # ✅ THE SUBPROCESS ISOLATION FIX: 
+        # Instead of calling raw 'pylode' directly, we use 'python -c' to inject our 
+        # sys.modules routing patch *before* executing the main pyLODE CLI entry point!
         import subprocess
-        print("Invoking pyLODE CLI compiler engine with precise system flag parameters...")
+        print("Invoking pyLODE CLI compiler engine with dynamic environment hot-patches...")
+        
+        patch_and_run_cmd = (
+            "import sys; "
+            "import rdflib.plugins.serializers.jsonld as jld; "
+            "sys.modules['rdflib_jsonld'] = jld; "
+            "sys.modules['rdflib_jsonld.serializer'] = jld; "
+            "from pylode.cli import main; "
+            "sys.argv = ['pylode', '-i', '" + output_ttl_path + "', '-o', 'public/index.html', '-p', 'ontdoc']; "
+            "main()"
+        )
         
         result = subprocess.run(
-            [
-                "pylode", 
-                "-i", output_ttl_path,                      # Explicit input file flag
-                "-o", "public/index.html",                 # Explicit output destination flag
-                "-p", "ontdoc"                              # Explicit profile specification flag
-            ],
+            [sys.executable, "-c", patch_and_run_cmd],
             capture_output=True,
             text=True
         )
         
-        # If the isolated process succeeds, our page is generated cleanly
+        # Check execution metrics
         if result.returncode == 0:
             print(f"✅ Success: Interactive HTML site and SemVer stamped file generated with metadata: {git_tag}")
             sys.exit(0)
         else:
-            print(f"❌ Subprocess pyLODE Compilation Failure:\n{result.stderr}")
+            print(f"❌ Subprocess pyLODE Compilation Failure:\n{result.stderr}\n{result.stdout}")
             sys.exit(5)
             
     except Exception as e:
         print(f"❌ Documentation Error: {e}")
         sys.exit(5)
+
 
 if __name__ == '__main__':
     run_pipeline()
